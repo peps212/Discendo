@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import TypingAnimation from './components/TypingAnimation'
+
 
 
 export default function Home() {
@@ -106,14 +106,7 @@ export default function Home() {
     return null; 
   })
 }
-      {
-        isloading && 
-        <div key={chatlog.length} className='flex justify-start'>
-          <div className='bg-gray-800 rounded-lg p-4 text-white max-w-2xl'>
-            <TypingAnimation />
-          </div>
-        </div>
-      }
+
 
             </div> 
           </div> 

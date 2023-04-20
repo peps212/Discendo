@@ -1,7 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 
 import { NextResponse } from 'next/server';
-import { stream } from '../utils/Streaming';
+import { stream } from '../../utils/Streaming';
  
 export const config = {
   runtime: 'edge',
