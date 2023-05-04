@@ -7,9 +7,8 @@ import { SerpAPI } from "langchain/tools";
 import { CallbackManager } from "langchain/callbacks";
 import { ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate } from "langchain/prompts";
 
-
-const KEY = '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';
-const serpKEY = 'cba55f8c3f206322ffdd3a924d1ce2215a5c4bb382b3783dc52d306bcc0c20e7';
+const KEY = process.env.KEY
+const serpKEY = process.env.SERPKEY;
 
 
 export async function stream(payload) {
