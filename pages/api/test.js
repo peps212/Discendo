@@ -1,29 +1,26 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
+import { NextResponse } from "next/server";
 import { OpenAI, Configuration } from "openai";
 
-
+export const config = {
+  runtime: 'edge',
+};
 
 const openai = new OpenAI({apiKey: process.env.OPENAI_API_TOKEN});
 
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
+
+ 
 
 export default async (req, res) => {
-  if (req.method !== "POST") {
-    return res.status(405).end();
-  }
 
-  const message = req.body.message;
-  console.log(message)
+
+  const {message} = await req.json();
+  console.log("message"+message)
 
   if (!message) {
-    return res.status(400).json({ error: "Message is required" });
+    return new Response('No message in the request', { status: 400 })
   }
 
-  try {
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
@@ -32,15 +29,28 @@ export default async (req, res) => {
           content: message,
         },
       ],
+      stream: true
     });
 
-    const result = completion.choices[0].message.content;
-    console.log(result)
 
-    return res.status(200).json({ result });
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder()
+  
+        for await (const part of completion) {
+          const text = part.choices[0]?.delta.content ?? ''
+          const chunk = encoder.encode(text)
+          controller.enqueue(chunk)
+        }
+        controller.close()
+      },
+    })
+  
 
-  } catch (error) {
-    console.log(error)
-    return res.status(500).json({ error: "OpenAI API request failed" });
+    return new NextResponse(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+      },
+    });
   }
-};

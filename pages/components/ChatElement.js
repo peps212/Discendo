@@ -5,11 +5,8 @@ import VoiceElement from './VoiceElement';
 export default function Chat() {
     const [inputValue, setInputValue] = useState('')
     const [isloading, setIsloading] = useState(false)
-  
     const [chatlog, setChatlog] = useState({messages: [], pending: undefined, history: []})
-    
     const { messages, pending, history } = chatlog;
-    
     const messageListRef = useRef(null)
   
   
@@ -20,6 +17,18 @@ export default function Chat() {
           messageList.scrollTop = messageList.scrollHeight;
         }
       }, [messages, pending]);
+
+      
+
+
+
+
+
+
+
+
+
+
 
 
       async function sendMessagesLang(message) {
@@ -32,18 +41,31 @@ export default function Chat() {
           },
           body: JSON.stringify({message }),
         })
+        const data = response.body
     
+        const reader = data.getReader()
+        const decoder = new TextDecoder()
+        let done = false
+
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          const chunkvalue = decoder.decode(value)
+          console.log(chunkvalue)
+          setChatlog(prevChatlog => ({
+            ...prevChatlog,
+            pending: (prevChatlog.pending ?? "") + chunkvalue
+          }))
+        }
         
-        const msg = await response.json()
-
-        console.log(msg)
-        console.log(msg.result)
-
         setChatlog(prevChatlog => ({
           history: [...prevChatlog.history, [message, prevChatlog.pending ?? ""]],
-          messages: [...prevChatlog.messages, {type:"bot", message: msg.result}],
+          messages: [...prevChatlog.messages, {type:"bot", message: prevChatlog.pending ?? ""}],
           pending: undefined
         }))
+
+
+
       }
 
 
