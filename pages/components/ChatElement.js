@@ -26,7 +26,53 @@ export default function Chat() {
 
 
 
-
+      async function getAudioData(token) {
+        try {
+          const response = await fetch('/api/websocket', {
+            method: 'POST',
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token }),
+          });
+      
+          if (!response.ok) {
+            throw new Error('Failed to fetch audio stream');
+          }
+      
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          let nextStartTime = audioContext.currentTime;
+          let audioSources = []; // Store references to audio sources
+      
+          const reader = response.body.getReader();
+          reader.read().then(function process({ value, done }) {
+            if (done) {
+              return;
+            }
+            console.log("value" + value)
+            // Convert base64 encoded string to Uint8Array
+            const decodedData = Uint8Array.from(new TextDecoder().decode(value), c => c.charCodeAt(0));
+            console.log("decoded" + decodedData)
+            // Decode and play the audio chunk
+            audioContext.decodeAudioData(decodedData.buffer).then(buffer => {
+              const source = audioContext.createBufferSource();
+              source.buffer = buffer;
+              source.connect(audioContext.destination);
+              source.start(nextStartTime);
+              nextStartTime += buffer.duration; 
+      
+              // Push the source to our references array
+              audioSources.push(source);
+            });
+      
+            return reader.read().then(process);
+          });
+      
+        } catch (err) {
+          console.error('Error streaming audio:', err.message);
+        }
+      }
+      
 
 
 
@@ -46,25 +92,28 @@ export default function Chat() {
         const reader = data.getReader()
         const decoder = new TextDecoder()
         let done = false
+        let chunkList = []
 
         while (!done) {
           const { value, done: readerDone } = await reader.read();
           done = readerDone;
           const chunkvalue = decoder.decode(value)
           console.log(chunkvalue)
+          chunkList.push(chunkvalue)
           setChatlog(prevChatlog => ({
             ...prevChatlog,
             pending: (prevChatlog.pending ?? "") + chunkvalue
           }))
         }
         
-        setChatlog(prevChatlog => ({
-          history: [...prevChatlog.history, [message, prevChatlog.pending ?? ""]],
-          messages: [...prevChatlog.messages, {type:"bot", message: prevChatlog.pending ?? ""}],
-          pending: undefined
-        }))
-
-
+            setChatlog(prevChatlog => ({
+              history: [...prevChatlog.history, [message, prevChatlog.pending ?? ""]],
+              messages: [...prevChatlog.messages, {type:"bot", message: prevChatlog.pending ?? ""}],
+              pending: undefined
+            }))
+          
+        getAudioData(chunkList.join(""))
+        console.log(chunkList.join(""))
 
       }
 
@@ -138,8 +187,15 @@ export default function Chat() {
 
 
     const handleTranscript = (text) => {
-      console.log(text)
-      setInputValue(text)
+      
+      setChatlog(prevChatlog => ({
+        ...prevChatlog,
+        messages: [...prevChatlog.messages, {type:"user", message: text}],
+        pending: undefined
+      }))
+
+      setChatlog(prevChatlog => ({...prevChatlog, pending: ""}))
+      sendMessagesLang(text)
     }
   
     return (
@@ -178,14 +234,17 @@ export default function Chat() {
             </div> 
   
             </div>
-            <VoiceElement onTranscript={handleTranscript}></VoiceElement>
+    
+
         <form onSubmit={handleSubmit} className='flex-none p-1 '>
           <div className='flex rounded-lg border border-gray-700 bg gray-800'>
+        
           <input type="text" className='flex-grow px-4 py-2 bg-transparent text-white focus:outline-none' placeholder={isloading? "waiting for response..." : 'Ask something'} value={inputValue} onChange={(e)=> setInputValue(e.target.value)} disabled={isloading} />
       
           <button type='submit' className='bg-purple-500 rounded-lg px-4 py-2 text-white font-semibold focus:outline-none hover:bg-purple-600 transition-colors duration-300'>Send</button>
           </div>
         </form>
+        <VoiceElement onTranscript={handleTranscript}></VoiceElement>
       </div>
       </div>
       </>

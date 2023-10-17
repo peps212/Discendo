@@ -15,7 +15,7 @@ export default async (req, res) => {
 
 
   const {message} = await req.json();
-  console.log("message"+message)
+  
 
   if (!message) {
     return new Response('No message in the request', { status: 400 })
@@ -38,7 +38,7 @@ export default async (req, res) => {
         const encoder = new TextEncoder()
   
         for await (const part of completion) {
-          const text = part.choices[0]?.delta.content ?? ''
+          const text = part.choices[0]?.delta.content
           const chunk = encoder.encode(text)
           controller.enqueue(chunk)
         }
