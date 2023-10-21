@@ -1,6 +1,8 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import VoiceElement from './VoiceElement';
+import { base64ToArrayBuffer } from '@/utils/utils';
+
 
 export default function Chat() {
     const [inputValue, setInputValue] = useState('')
@@ -8,9 +10,9 @@ export default function Chat() {
     const [chatlog, setChatlog] = useState({messages: [], pending: undefined, history: []})
     const { messages, pending, history } = chatlog;
     const messageListRef = useRef(null)
-  
-  
-  
+
+
+   
     useEffect(() => {
         const messageList = messageListRef.current;
         if (messageList) {
@@ -23,144 +25,159 @@ export default function Chat() {
 
 
 
+async function sendMessagesLang(message) {
 
-
-
-      async function getAudioData(token) {
-        try {
-          const response = await fetch('/api/websocket', {
-            method: 'POST',
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ token }),
-          });
-      
-          if (!response.ok) {
-            throw new Error('Failed to fetch audio stream');
-          }
-      
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          let nextStartTime = audioContext.currentTime;
-          let audioSources = []; // Store references to audio sources
-      
-          const reader = response.body.getReader();
-          reader.read().then(function process({ value, done }) {
-            if (done) {
-              return;
-            }
-            console.log("value" + value)
-            // Convert base64 encoded string to Uint8Array
-            const decodedData = Uint8Array.from(new TextDecoder().decode(value), c => c.charCodeAt(0));
-            console.log("decoded" + decodedData)
-            // Decode and play the audio chunk
-            audioContext.decodeAudioData(decodedData.buffer).then(buffer => {
-              const source = audioContext.createBufferSource();
-              source.buffer = buffer;
-              source.connect(audioContext.destination);
-              source.start(nextStartTime);
-              nextStartTime += buffer.duration; 
-      
-              // Push the source to our references array
-              audioSources.push(source);
-            });
-      
-            return reader.read().then(process);
-          });
-      
-        } catch (err) {
-          console.error('Error streaming audio:', err.message);
-        }
-      }
-      
-
-
-
-
-      async function sendMessagesLang(message) {
-        console.log(message)
-    
+        //POST REQUEST
         const response = await fetch("/api/test", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type": "application/json" 
           },
           body: JSON.stringify({message }),
         })
-        const data = response.body
-    
-        const reader = data.getReader()
-        const decoder = new TextDecoder()
-        let done = false
-        let chunkList = []
 
-        while (!done) {
-          const { value, done: readerDone } = await reader.read();
-          done = readerDone;
-          const chunkvalue = decoder.decode(value)
-          console.log(chunkvalue)
-          chunkList.push(chunkvalue)
-          setChatlog(prevChatlog => ({
-            ...prevChatlog,
-            pending: (prevChatlog.pending ?? "") + chunkvalue
-          }))
+        // VARIABLES
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let done = false;
+        
+        const voiceId = "21m00Tcm4TlvDq8ikWAM";
+        const format = "pcm_24000"
+        const model = 'eleven_monolingual_v1';
+        const wsUrl = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=${model}&output_format=${format}`;
+        const socket = new WebSocket(wsUrl);
+
+        const audioContext = new AudioContext();
+        let audioQueue = [];
+        let lastBufferSource = null;
+        
+
+
+
+        // SOCKET OPEN 
+        socket.addEventListener('open', () => {
+          const bosMessage = {
+            "text": " ",
+            "voice_settings": {
+              "stability": 0.5,
+              "similarity_boost": true
+            }, 
+             "generation_config": {
+              "chunk_length_schedule": [100, 150, 250, 290]
+            },
+            "xi_api_key": `${process.env.NEXT_PUBLIC_EL_API_KEY}`
+          };
+          socket.send(JSON.stringify(bosMessage));
+        })
+          
+        while (socket.readyState !== WebSocket.OPEN) {
+          await new Promise(resolve => setTimeout(resolve, 10));
         }
+          //LOOP
+
+
+            socket.addEventListener('message', async (event) => {
+              const response = await JSON.parse(event.data);
+              console.log("RECEIVEDDDDDDDDDDDDDDDD")
+              if (response.audio) {
+                console.log("Received chunk");
+
+                const audioData = base64ToArrayBuffer(response.audio); // Convert Base64 to ArrayBuffer
+                const int16Array = new Int16Array(audioData);
+                const samples = new Float32Array(int16Array.length);
+                for (let i = 0; i < int16Array.length; i++) {
+                  samples[i] = int16Array[i] / 32767.0;
+                }
+
+
+                const audioBuffer = audioContext.createBuffer(1, samples.length, 24000);
+                audioBuffer.getChannelData(0).set(samples);
+            
+                audioQueue.push(audioBuffer);
+            
+                // If nothing is currently playing, start playback.
+                if (!lastBufferSource) {
+                  playNextChunk();
+                }
+              }
+                else {
+                console.log("No audio data in the response");
+            }
+
+
+          
+            if (response.isFinal) {
+                console.log("done")
+              }
+          
+            if (response.normalizedAlignment) {
+                console.log(response.normalizedAlignment)
+            }
+
+            })
+            
+            while (!done) {
+              const { value, done: readerDone } = await reader.read();
+              done = readerDone;
+              const chunkValue = decoder.decode(value);
+              setChatlog(prevChatlog => ({
+                ...prevChatlog,
+                pending: (prevChatlog.pending ?? "") + chunkValue,
+              }));
+              const textMessage = {
+                "text": `${chunkValue}`,
+                "try_trigger_generation": false,
+              };
+              
+  
+              
+              console.log("SEEEEEEEEEEEEENT")
+              socket.send(JSON.stringify(textMessage))
+      
+            }
+
+
+          socket.onclose = function (event) {
+            if (event.wasClean) {
+              console.info(`Connection closed cleanly, code=${event.code}, reason=${event.reason}`);
+              console.log(event.reason)
+            } else {
+              console.warn('Connection died');
+            }
+          };
         
             setChatlog(prevChatlog => ({
               history: [...prevChatlog.history, [message, prevChatlog.pending ?? ""]],
               messages: [...prevChatlog.messages, {type:"bot", message: prevChatlog.pending ?? ""}],
               pending: undefined
             }))
-          
-        getAudioData(chunkList.join(""))
-        console.log(chunkList.join(""))
 
+            function playNextChunk() {
+              if (audioQueue.length === 0) {
+                lastBufferSource = null;
+                console.log("BUFFER NULLLL")
+                return;
+                
+              }
+              
+              console.log("Playing chunk");
+              const nextBuffer = audioQueue.shift();
+              const bufferSource = audioContext.createBufferSource();
+              bufferSource.buffer = nextBuffer;
+              bufferSource.connect(audioContext.destination);
+              bufferSource.start();
+            
+              // The onended event should be on the bufferSource
+              bufferSource.onended = () => {
+                playNextChunk();
+              };
+            
+              lastBufferSource = bufferSource;
+            }
       }
 
 
 
-  
-  /*
-    async function sendMessagesLang(message) {
-      console.log(message)
-  
-      const response = await fetch("/api/test", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({message }),
-      })
-      console.log(response.body)
-      const data = response.body;
-      const reader = data.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-
-      while (!done) {
-        const {value, done: readerDone } = await reader.read();
-        done = readerDone;
-        const chunkvalue = decoder.decode(value);
-        console.log(chunkvalue);
-        if (chunkvalue === "[DONE]") {
-          setChatlog(prevChatlog => ({
-            history: [...prevChatlog.history, [message, prevChatlog.pending ?? ""]],
-            messages: [...prevChatlog.messages, {type:"bot", message: prevChatlog.pending ?? ""}],
-            pending: undefined
-          }))
-        } else { 
-          setChatlog(prevChatlog => ({
-            ...prevChatlog,
-            pending: (prevChatlog.pending ?? "") + chunkvalue
-          }))
-        }
-        
-      }
-  
-      setIsloading(false)
-    }
-    */
-  
     async function handleSubmit(e) {
       e.preventDefault()    
   
@@ -170,7 +187,7 @@ export default function Chat() {
         pending: undefined
       }))
       
-      setInputValue('')
+      //setInputValue('')
   
       setChatlog(prevChatlog => ({...prevChatlog, pending: ""}))
   
@@ -201,7 +218,7 @@ export default function Chat() {
     return (
       <>
       <div className='bg-gray-800 h-screen'>
-      <div className='container mx-auto h-1/2 w-5/6 py-3'>
+      <div className='container mx-auto h-5/6 w-5/6 py-3'>
       <h1 className='bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text text-center font-bold text-5xl pb-4'>V2.2</h1>
         <div className='flex flex-col h-4/6 bg-gray-900 my rounded-lg h-1/ overflow-y-scroll' ref={messageListRef}>
             <div className='flex-grow p-6' >

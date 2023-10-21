@@ -38,9 +38,13 @@ export default async (req, res) => {
         const encoder = new TextEncoder()
   
         for await (const part of completion) {
+          
           const text = part.choices[0]?.delta.content
+          if (text !== undefined) {
+          
           const chunk = encoder.encode(text)
           controller.enqueue(chunk)
+        }
         }
         controller.close()
       },
