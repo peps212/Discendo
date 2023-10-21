@@ -14,8 +14,7 @@ const openai = new OpenAI({apiKey: process.env.OPENAI_API_TOKEN});
 export default async (req, res) => {
 
 
-  const {message} = await req.json();
-  
+  const {message, sysMessage} = await req.json();
 
   if (!message) {
     return new Response('No message in the request', { status: 400 })
@@ -24,6 +23,10 @@ export default async (req, res) => {
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
+        {
+          role: "system",
+          content: sysMessage,
+        },
         {
           role: "user",
           content: message,

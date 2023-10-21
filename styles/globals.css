@@ -25,3 +25,15 @@ body {
     )
     rgb(var(--background-start-rgb));
 }
+
+
+/* For Chrome, Safari, and Opera */
+.hide-scrollbar::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* For Firefox */
+.hide-scrollbar {
+  scrollbar-width: none;
+}

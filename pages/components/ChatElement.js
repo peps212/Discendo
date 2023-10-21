@@ -1,10 +1,11 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import VoiceElement from './VoiceElement';
-import { base64ToArrayBuffer } from '@/utils/utils';
+import { base64ToArrayBuffer, createSummary } from '@/utils/utils';
 
 
 export default function Chat() {
+
     const [inputValue, setInputValue] = useState('')
     const [isloading, setIsloading] = useState(false)
     const [chatlog, setChatlog] = useState({messages: [], pending: undefined, history: []})
@@ -22,24 +23,47 @@ export default function Chat() {
 
       
 
+      async function handleSubmit(e) {
+      
+        e.preventDefault()  
 
+  
+  
+        
+      
+    
+        setChatlog(prevChatlog => ({
+          ...prevChatlog,
+          messages: [...prevChatlog.messages, {type:"user", message: inputValue}],
+          pending: undefined
+        }))
+        
+        setInputValue('')
+        setChatlog(prevChatlog => ({...prevChatlog, pending: ""}))
+        
+        setIsloading(true)
+        await sendMessagesLang(inputValue)
+        setIsloading(false)
+      }
+    
 
 
 async function sendMessagesLang(message) {
-
+        const sysMessage = ""
         //POST REQUEST
         const response = await fetch("/api/test", {
           method: "POST",
           headers: {
             "Content-Type": "application/json" 
           },
-          body: JSON.stringify({message }),
+          body: JSON.stringify({message, sysMessage }),
         })
 
         // LLM VARIABLES
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let done = false;
+        const fulltext = []
         
         // TTS VARIABLES
         const voiceId = "21m00Tcm4TlvDq8ikWAM";
@@ -104,6 +128,7 @@ async function sendMessagesLang(message) {
           const { value, done: readerDone } = await reader.read();
           done = readerDone;
           const chunkValue = decoder.decode(value);
+          fulltext.push(chunkValue)
           setChatlog(prevChatlog => ({
             ...prevChatlog,
             pending: (prevChatlog.pending ?? "") + chunkValue,
@@ -112,10 +137,10 @@ async function sendMessagesLang(message) {
             "text": `${chunkValue}`,
             "try_trigger_generation": false,
           };
-        
           socket.send(JSON.stringify(textMessage))
   
         }
+        createSummary(fulltext.join(""))
 
         socket.onclose = function (event) {
           if (event.wasClean) {
@@ -156,23 +181,7 @@ async function sendMessagesLang(message) {
 
 
 
-    async function handleSubmit(e) {
-      e.preventDefault()    
-  
-      setChatlog(prevChatlog => ({
-        ...prevChatlog,
-        messages: [...prevChatlog.messages, {type:"user", message: inputValue}],
-        pending: undefined
-      }))
-      
-      setInputValue('')
-  
-      setChatlog(prevChatlog => ({...prevChatlog, pending: ""}))
-  
-      sendMessagesLang(inputValue)
-  
-    }
-  
+
     
   
     const chatMessages = useMemo(() => {
@@ -181,7 +190,7 @@ async function sendMessagesLang(message) {
 
 
 
-    const handleTranscript = (text) => {
+    async function handleTranscript(text) {
       
       setChatlog(prevChatlog => ({
         ...prevChatlog,
@@ -190,58 +199,69 @@ async function sendMessagesLang(message) {
       }))
 
       setChatlog(prevChatlog => ({...prevChatlog, pending: ""}))
-      sendMessagesLang(text)
+      setIsloading(true)
+      await sendMessagesLang(text)
+      setIsloading(false)
     }
   
     return (
       <>
-      <div className='bg-gray-800 h-screen'>
-      <div className='container mx-auto h-5/6 w-5/6 py-3'>
-      <h1 className='bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text text-center font-bold text-5xl pb-4'>V2.2</h1>
-        <div className='flex flex-col h-4/6 bg-gray-900 my rounded-lg h-1/ overflow-y-scroll' ref={messageListRef}>
-            <div className='flex-grow p-6' >
-              <div className='flex flex-col space-y-4'>
-        {
-    chatMessages.map((message, index) => {
-      if (message.type === 'bot') {
-        return (
-          <div key={index} className='flex justify-start'>
-            <div className='bg-gray-800 rounded-lg p-4 text-white max-w-2xl break-words'>
-              {message.message}
-            </div>
-          </div>
-        );
-      } else if (message.type === 'user') {
-        return (
-          <div key={index} className='flex justify-end'>
-            <div className='bg-purple-500 rounded-lg p-4 text-white max-w-2xl break-words'>
-              {message.message}
-            </div>
-          </div>
-        );
-      }
-      return null; 
-    })
-  }
-  
-  
-              </div> 
-            </div> 
-  
-            </div>
-    
 
-        <form onSubmit={handleSubmit} className='flex-none p-1 '>
-          <div className='flex rounded-lg border border-gray-700 bg gray-800'>
-        
+
+
+<div className='bg-gray-800 h-screen'>
+  <div className='h-full mx-10 py-3 flex overflow-x-hidden justify-around'> 
+
+
+
+    {/* Chat Container */}
+    <div className='w-1/4'>
+      <h1 className='bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text text-center font-bold text-5xl pb-4'>V2.2</h1>
+      <div className='flex flex-col h-4/6 bg-gray-900 my rounded-lg h-1/ overflow-y-scroll hide-scrollbar'>
+        <div className='flex-grow p-6'>
+          <div className='flex flex-col space-y-4'>
+            {
+              chatMessages.map((message, index) => {
+                if (message.type === 'bot') {
+                  return (
+                    <div key={index} className='flex justify-start'>
+                      <div className='bg-gray-800 rounded-lg p-4 text-white max-w-2xl break-words'>
+                        {message.message}
+                      </div>
+                    </div>
+                  );
+                } else if (message.type === 'user') {
+                  return (
+                    <div key={index} className='flex justify-end'>
+                      <div className='bg-purple-500 rounded-lg p-4 text-white max-w-2xl break-words'>
+                        {message.message}
+                      </div>
+                    </div>
+                  );
+                }
+                return null; 
+              })
+            }
+          </div> 
+        </div> 
+      </div>
+
+      <form onSubmit={handleSubmit} className='flex-none p-1'>
+        <div className='flex rounded-lg border border-gray-700 bg gray-800'>
           <input type="text" className='flex-grow px-4 py-2 bg-transparent text-white focus:outline-none' placeholder={isloading? "waiting for response..." : 'Ask something'} value={inputValue} onChange={(e)=> setInputValue(e.target.value)} disabled={isloading} />
-      
-          <button type='submit' className='bg-purple-500 rounded-lg px-4 py-2 text-white font-semibold focus:outline-none hover:bg-purple-600 transition-colors duration-300'>Send</button>
-          </div>
-        </form>
-        <VoiceElement onTranscript={handleTranscript}></VoiceElement>
-      </div>
-      </div>
+          <button disabled={isloading} type='submit' className='bg-purple-500 rounded-lg px-4 py-2 text-white font-semibold focus:outline-none hover:bg-purple-600 transition-colors duration-300'>Send</button>
+        </div>
+      </form>
+      <VoiceElement disabled={isloading} onTranscript={handleTranscript}></VoiceElement>
+    </div>
+
+        {/* New Container */}
+        <div className='w-2/3 bg-gray-950 rounded-lg'>
+      {/* Add any content you want for the new container here */}
+    </div>
+  </div>
+</div>
+
       </>
     )
   }

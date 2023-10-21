@@ -1,7 +1,7 @@
 import { useWhisper } from '@chengsokdara/use-whisper'
 import { useEffect } from 'react';
 
-export default function VoiceElement({onTranscript}) {
+export default function VoiceElement({disabled, onTranscript}) {
 
 
   const { transcript, startRecording } = useWhisper({
@@ -23,10 +23,7 @@ export default function VoiceElement({onTranscript}) {
 
   return (
     <div>
-      <button className='bg-purple-500 rounded-lg px-4 py-2 text-white font-semibold focus:outline-none hover:bg-purple-600 transition-colors duration-300' onClick={() => startRecording()}>Talk</button>
+      <button disabled={disabled} className='bg-purple-500 rounded-lg px-4 py-2 text-white font-semibold focus:outline-none hover:bg-purple-600 transition-colors duration-300' onClick={() => startRecording()}>Talk</button>
     </div>
   )
-
-
-
 }
