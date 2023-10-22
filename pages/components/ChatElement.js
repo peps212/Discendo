@@ -2,6 +2,18 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import VoiceElement from './VoiceElement';
 import { base64ToArrayBuffer, createSummary } from '@/utils/utils';
+import ReactMarkdown from "react-markdown"
+import Paragraph from '@/utils/Renderers/ParagraphRenderer';
+import Heading1 from '@/utils/Renderers/H1Renderer';
+import List from '@/utils/Renderers/ListRenderer';
+import ListElement from '@/utils/Renderers/ListElementRenderer';
+import Heading2 from '@/utils/Renderers/H2Renderer';
+import Heading3 from '@/utils/Renderers/H3Renderer';
+import CodeRenderer from '@/utils/Renderers/CodeRenderer';
+import Table from '@/utils/Renderers/TableRenderer';
+import remarkGfm from 'remark-gfm';
+import Tbody from '@/utils/Renderers/TableBody';
+
 
 
 export default function Chat() {
@@ -12,6 +24,30 @@ export default function Chat() {
     const { messages, pending, history } = chatlog;
     const messageListRef = useRef(null)
 
+    const [streamingText, setStreamingText] = useState("")
+
+
+  
+
+    const renderers = {
+      table: Table,
+      tableHead: Table,
+      tableBody: Tbody,
+      tableRow: Table,
+      tableCell: Table,
+    
+      p: Paragraph,
+      h1: Heading1,
+      h2: Heading2,
+      h3: Heading3,
+      ul: List,
+      ol: List,
+      li: ListElement,
+      inlineCode: CodeRenderer,
+      code: CodeRenderer,
+      
+      
+    }
 
    
     useEffect(() => {
@@ -49,7 +85,7 @@ export default function Chat() {
 
 
 async function sendMessagesLang(message) {
-        const sysMessage = ""
+        const sysMessage = "the text that you will generate will be read out loud and not be displayed on a screen. generate conversational text that can be clearly understood by just listening"
         //POST REQUEST
         const response = await fetch("/api/test", {
           method: "POST",
@@ -123,7 +159,7 @@ async function sendMessagesLang(message) {
           }
 
         })
-            
+        
         while (!done) {
           const { value, done: readerDone } = await reader.read();
           done = readerDone;
@@ -140,7 +176,8 @@ async function sendMessagesLang(message) {
           socket.send(JSON.stringify(textMessage))
   
         }
-        createSummary(fulltext.join(""))
+        createSummary(message, setStreamingText)
+        
 
         socket.onclose = function (event) {
           if (event.wasClean) {
@@ -200,7 +237,7 @@ async function sendMessagesLang(message) {
 
       setChatlog(prevChatlog => ({...prevChatlog, pending: ""}))
       setIsloading(true)
-      await sendMessagesLang(text)
+      sendMessagesLang(text)
       setIsloading(false)
     }
   
@@ -252,14 +289,15 @@ async function sendMessagesLang(message) {
           <button disabled={isloading} type='submit' className='bg-purple-500 rounded-lg px-4 py-2 text-white font-semibold focus:outline-none hover:bg-purple-600 transition-colors duration-300'>Send</button>
         </div>
       </form>
-      <VoiceElement disabled={isloading} onTranscript={handleTranscript}></VoiceElement>
+      <VoiceElement onTranscript={handleTranscript}></VoiceElement>
+      
     </div>
 
         {/* New Container */}
-        <div className='w-2/3 bg-gray-950 rounded-lg'>
-      {/* Add any content you want for the new container here */}
-    </div>
-  </div>
+        <div className='w-2/3 bg-gray-900 rounded-lg overflow-y-scroll hide-scrollbar'>
+        <ReactMarkdown className='mx-5' children={streamingText} components={renderers} remarkPlugins={[remarkGfm]}/>
+        </div>
+      </div>
 </div>
 
       </>
