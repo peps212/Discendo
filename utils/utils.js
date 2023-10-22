@@ -12,8 +12,8 @@ export function base64ToArrayBuffer(base64) {
 
 
 
-  export async function createSummary(message) {
-           const sysMessage = "given the following text, summarize what has been said as if you were to display it on a screen to highlight the key concepts."
+  export async function createSummary(message, updateTextCallback) {
+           const sysMessage = "answer this question creating 'study notes' for the student, summarise the core concepts and give a clear explanaition. Enrich your text with heading, tables, list and make it easibly readable and digestible. RETURN YOUR TEXT IN MARKDOWN."
             //POST REQUEST
             const response = await fetch("/api/test", {
               method: "POST",
@@ -26,6 +26,7 @@ export function base64ToArrayBuffer(base64) {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let done = false;
+            let aggregatedText = ""
 
 
             while (!done) {
@@ -33,8 +34,9 @@ export function base64ToArrayBuffer(base64) {
               done = readerDone;
               const chunkValue = decoder.decode(value);
 
+              aggregatedText += chunkValue
+              updateTextCallback(aggregatedText)
 
-              console.log(chunkValue)
             }
 
   }
