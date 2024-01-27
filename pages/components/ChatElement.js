@@ -85,7 +85,7 @@ export default function Chat() {
 
 
 async function sendMessagesLang(message) {
-        const sysMessage = "the text that you will generate will be read out loud and not be displayed on a screen. generate conversational text that can be clearly understood by just listening"
+        const sysMessage = "the text that you will generate will be read out loud and not be displayed on a screen. generate conversational text that can be clearly understood by just listening."
         //POST REQUEST
         const response = await fetch("/api/test", {
           method: "POST",
@@ -94,7 +94,7 @@ async function sendMessagesLang(message) {
           },
           body: JSON.stringify({message, sysMessage }),
         })
-
+/*
         // LLM VARIABLES
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -125,7 +125,7 @@ async function sendMessagesLang(message) {
              "generation_config": {
               "chunk_length_schedule": [100, 150, 250, 290]
             },
-            "xi_api_key": `${process.env.NEXT_PUBLIC_EL_API_KEY}`
+            "xi_api_key": `${process.env.NEXT_PUBLIC_EL_API_KEY_SECOND}`
           };
           socket.send(JSON.stringify(bosMessage));
         })
@@ -176,7 +176,7 @@ async function sendMessagesLang(message) {
           socket.send(JSON.stringify(textMessage))
   
         }
-        createSummary(message, setStreamingText)
+        //createSummary(message, setStreamingText)
         
 
         socket.onclose = function (event) {
@@ -187,11 +187,7 @@ async function sendMessagesLang(message) {
           }
         };
 
-        setChatlog(prevChatlog => ({
-          history: [...prevChatlog.history, [message, prevChatlog.pending ?? ""]],
-          messages: [...prevChatlog.messages, {type:"bot", message: prevChatlog.pending ?? ""}],
-          pending: undefined
-        }))
+
 
         function playNextChunk() {
           if (audioQueue.length === 0) {
@@ -213,7 +209,13 @@ async function sendMessagesLang(message) {
         
           lastBufferSource = bufferSource;
         }
+*/
 
+setChatlog(prevChatlog => ({
+  history: [...prevChatlog.history, [message, prevChatlog.pending ?? ""]],
+  messages: [...prevChatlog.messages, {type:"bot", message: prevChatlog.pending ?? ""}],
+  pending: undefined
+}))
       }
 
 

@@ -7,7 +7,7 @@ export default function VoiceElement({onTranscript}) {
   const { transcript, startRecording } = useWhisper({
     apiKey: process.env.NEXT_PUBLIC_OPENAI_API_TOKEN, // YOUR_OPEN_AI_TOKEN
     nonStop: true, // keep recording as long as the user is speaking
-    stopTimeout: 5000, // auto stop after 5 seconds
+    stopTimeout: 2000, // auto stop after 5 seconds
   })
 
     useEffect(() => {

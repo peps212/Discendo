@@ -13,7 +13,7 @@ export function base64ToArrayBuffer(base64) {
 
 
   export async function createSummary(message, updateTextCallback) {
-           const sysMessage = "answer this question creating 'study notes' for the student, summarise the core concepts and give a clear explanaition. Enrich your text with heading, tables, list and make it easibly readable and digestible. RETURN YOUR TEXT IN MARKDOWN."
+           const sysMessage = "answer this question creating 'study notes' for the student, summarise the core concepts and give a clear explanaition. Enrich your text with headings, tables, lists and make it easibly readable and digestible. RETURN YOUR TEXT IN MARKDOWN."
             //POST REQUEST
             const response = await fetch("/api/test", {
               method: "POST",
