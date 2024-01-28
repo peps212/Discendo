@@ -85,7 +85,7 @@ export default function Chat() {
 
 
 async function sendMessagesLang(message) {
-        const sysMessage = "the text that you will generate will be read out loud and not be displayed on a screen. generate conversational text that can be clearly understood by just listening."
+        const sysMessage = "You are a conversational AI, act like one, be concise  the text that you will generate will be read out loud and not be displayed on a screen. generate conversational text that can be clearly understood by just listening."
         //POST REQUEST
         const response = await fetch("/api/test", {
           method: "POST",
@@ -94,7 +94,7 @@ async function sendMessagesLang(message) {
           },
           body: JSON.stringify({message, sysMessage }),
         })
-/*
+
         // LLM VARIABLES
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -160,7 +160,7 @@ async function sendMessagesLang(message) {
 
         })
         
-        while (!done) {
+        while (!done) { 
           const { value, done: readerDone } = await reader.read();
           done = readerDone;
           const chunkValue = decoder.decode(value);
@@ -187,7 +187,11 @@ async function sendMessagesLang(message) {
           }
         };
 
-
+        setChatlog(prevChatlog => ({
+          history: [...prevChatlog.history, [message, prevChatlog.pending ?? ""]],
+          messages: [...prevChatlog.messages, {type:"bot", message: prevChatlog.pending ?? ""}],
+          pending: undefined
+        }))
 
         function playNextChunk() {
           if (audioQueue.length === 0) {
@@ -209,13 +213,9 @@ async function sendMessagesLang(message) {
         
           lastBufferSource = bufferSource;
         }
-*/
 
-setChatlog(prevChatlog => ({
-  history: [...prevChatlog.history, [message, prevChatlog.pending ?? ""]],
-  messages: [...prevChatlog.messages, {type:"bot", message: prevChatlog.pending ?? ""}],
-  pending: undefined
-}))
+
+
       }
 
 
@@ -243,6 +243,8 @@ setChatlog(prevChatlog => ({
       setIsloading(false)
     }
   
+
+
     return (
       <>
 
@@ -254,8 +256,8 @@ setChatlog(prevChatlog => ({
 
 
     {/* Chat Container */}
-    <div className='w-1/4'>
-      <h1 className='bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text text-center font-bold text-5xl pb-4'>V2.2</h1>
+    <div className='w-8/12'>
+      <h1 className='bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text text-center font-bold text-5xl pb-4'>SYO 1.0</h1>
       <div className='flex flex-col h-4/6 bg-gray-900 my rounded-lg h-1/ overflow-y-scroll hide-scrollbar'>
         <div className='flex-grow p-6'>
           <div className='flex flex-col space-y-4'>
@@ -292,14 +294,8 @@ setChatlog(prevChatlog => ({
         </div>
       </form>
       <VoiceElement onTranscript={handleTranscript}></VoiceElement>
-      
     </div>
-
-        {/* New Container */}
-        <div className='w-2/3 bg-gray-900 rounded-lg overflow-y-scroll hide-scrollbar'>
-        <ReactMarkdown className='mx-5' children={streamingText} components={renderers} remarkPlugins={[remarkGfm]}/>
-        </div>
-      </div>
+  </div>
 </div>
 
       </>
